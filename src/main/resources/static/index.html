@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Splitter - Divisor de Gastos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <h1>💰 Expense Splitter</h1>
+          <p>Divide gastos fácilmente con tu grupo</p>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- View: Start/Groups List -->
+        <div id="groupsView" class="view active">
+          <div class="section">
+            <h2>Mis Grupos</h2>
+            <div id="groupsList" class="groups-list"></div>
+            <button class="btn btn-primary" onclick="showCreateGroupForm()">
+              + Crear Nuevo Grupo
+            </button>
+          </div>
+        </div>
+
+        <!-- View: Create Group Form -->
+        <div id="createGroupView" class="view">
+          <div class="section">
+            <h2>Crear Nuevo Grupo</h2>
+            <form id="createGroupForm" onsubmit="handleCreateGroup(event)">
+              <div class="form-group">
+                <label for="groupName">Nombre del Grupo:</label>
+                <input
+                  type="text"
+                  id="groupName"
+                  placeholder="Ej: Viaje a Playa"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="groupDescription">Descripción (opcional):</label>
+                <textarea
+                  id="groupDescription"
+                  placeholder="Ej: Gastos de viaje de verano"
+                ></textarea>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                  Crear Grupo
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  onclick="showView('groupsView')"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- View: Group Dashboard -->
+        <div id="groupDashboardView" class="view">
+          <div class="section">
+            <div class="group-header">
+              <div>
+                <h2 id="dashboardGroupName"></h2>
+                <p id="dashboardGroupDescription"></p>
+              </div>
+              <button
+                class="btn btn-secondary btn-small"
+                onclick="showView('groupsView')"
+              >
+                ← Volver
+              </button>
+            </div>
+          </div>
+
+          <!-- Members Section -->
+          <div class="section">
+            <h3>Miembros del Grupo</h3>
+            <div id="membersList" class="members-list"></div>
+            <button
+              class="btn btn-primary btn-small"
+              onclick="showAddMemberForm()"
+            >
+              + Agregar Miembro
+            </button>
+          </div>
+
+          <!-- Add Member Form -->
+          <div
+            id="addMemberForm"
+            class="modal hidden"
+            onclick="handleModalClick(event)"
+          >
+            <div class="modal-content" onclick="event.stopPropagation()">
+              <h3>Agregar Miembro</h3>
+              <form onsubmit="handleAddMember(event)">
+                <div class="form-group">
+                  <label for="memberName">Nombre:</label>
+                  <input
+                    type="text"
+                    id="memberName"
+                    placeholder="Ej: Juan"
+                    required
+                  />
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary">Agregar</button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="closeAddMemberForm()"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Balances Section -->
+          <div class="section">
+            <h3>Balances Actuales</h3>
+            <div id="balancesList" class="balances-list">
+              <p class="empty-message">Sin deudas pendientes</p>
+            </div>
+          </div>
+
+          <!-- Expenses Section -->
+          <div class="section">
+            <h3>Gastos Registrados</h3>
+            <button
+              class="btn btn-primary btn-small"
+              onclick="showCreateExpenseForm()"
+            >
+              + Registrar Gasto
+            </button>
+            <div id="expensesList" class="expenses-list"></div>
+          </div>
+
+          <!-- Create Expense Form -->
+          <div
+            id="createExpenseForm"
+            class="modal hidden"
+            onclick="handleModalClick(event)"
+          >
+            <div
+              class="modal-content modal-lg"
+              onclick="event.stopPropagation()"
+            >
+              <h3>Registrar Nuevo Gasto</h3>
+              <form onsubmit="handleCreateExpense(event)">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="expensePaidBy">¿Quién pagó?:</label>
+                    <select id="expensePaidBy" required></select>
+                  </div>
+                  <div class="form-group">
+                    <label for="expenseAmount">Monto Total:</label>
+                    <input
+                      type="number"
+                      id="expenseAmount"
+                      placeholder="0.00"
+                      step="0.01"
+                      required
+                      onchange="updateDivisionsContainer()"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="expenseDescription">Descripción:</label>
+                  <input
+                    type="text"
+                    id="expenseDescription"
+                    placeholder="Ej: Almuerzo"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="expenseCategory">Categoría:</label>
+                  <select id="expenseCategory" required>
+                    <option value="FOOD">Comida</option>
+                    <option value="TRANSPORT">Transporte</option>
+                    <option value="ACCOMMODATION">Hospedaje</option>
+                    <option value="ENTERTAINMENT">Entretenimiento</option>
+                    <option value="OTHER">Otro</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>¿Quiénes participan?:</label>
+                  <div
+                    id="divisionsContainer"
+                    class="divisions-container"
+                  ></div>
+                  <p class="help-text">
+                    Total asignado: <strong id="divisionsTotal">0.00</strong> /
+                    <strong id="totalAmount">0.00</strong>
+                  </p>
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary">
+                    Guardar Gasto
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="closeCreateExpenseForm()"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Payments Section -->
+          <div class="section">
+            <h3>Registrar Pago</h3>
+            <form id="paymentForm" onsubmit="handleRecordPayment(event)">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="paymentDebtor">¿Quién paga?:</label>
+                  <select id="paymentDebtor" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="paymentCreditor">¿A quién?:</label>
+                  <select id="paymentCreditor" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="paymentAmount">Monto:</label>
+                  <input
+                    type="number"
+                    id="paymentAmount"
+                    placeholder="0.00"
+                    step="0.01"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="paymentDescription">Descripción (opcional):</label>
+                <input
+                  type="text"
+                  id="paymentDescription"
+                  placeholder="Pago para cancelar deuda"
+                />
+              </div>
+              <button type="submit" class="btn btn-primary">
+                Registrar Pago
+              </button>
+            </form>
+          </div>
+
+          <!-- Payments History -->
+          <div class="section">
+            <h3>Historial de Pagos</h3>
+            <div id="paymentsList" class="payments-list"></div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>&copy; 2024 Expense Splitter. Divide gastos de forma justa.</p>
+      </footer>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
