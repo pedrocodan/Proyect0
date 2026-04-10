@@ -23,42 +23,69 @@ public class SettlementService {
     private final MemberRepository memberRepository;
 
     public List<BalanceDTO> getBalances(Long groupId) {
-        List<Member> members = memberRepository.findByGroupId(groupId);
-        List<BalanceDTO> balances = new ArrayList<>();
-        
-        for (int i = 0; i < members.size(); i++) {
-            for (int j = i + 1; j < members.size(); j++) {
-                Member memberX = members.get(i);
-                Member memberY = members.get(j);
-                
-                BigDecimal balance = calculateBalance(groupId, memberX.getId(), memberY.getId());
-                
-                if (balance.compareTo(BigDecimal.ZERO) != 0) {
-                    BalanceDTO dto = new BalanceDTO();
-                    
-                    if (balance.compareTo(BigDecimal.ZERO) > 0) {
-                        // memberX owes memberY
-                        dto.setDebtorId(memberX.getId());
-                        dto.setDebtorName(memberX.getName());
-                        dto.setCreditorId(memberY.getId());
-                        dto.setCreditorName(memberY.getName());
-                        dto.setAmount(balance);
-                    } else {
-                        // memberY owes memberX
-                        dto.setDebtorId(memberY.getId());
-                        dto.setDebtorName(memberY.getName());
-                        dto.setCreditorId(memberX.getId());
-                        dto.setCreditorName(memberX.getName());
-                        dto.setAmount(balance.abs());
-                    }
-                    
-                    balances.add(dto);
-                }
+    List<Member> members = memberRepository.findByGroupId(groupId);
+    
+    // Step 1: Calculate net balance for each member
+    Map<Long, BigDecimal> memberNetBalance = new HashMap<>();
+    for (Member member : members) {
+        memberNetBalance.put(member.getId(), BigDecimal.ZERO);
+    }
+    
+    // Calculate net balance from expenses and payments
+    for (Member member : members) {
+        for (Member other : members) {
+            if (!member.getId().equals(other.getId())) {
+                BigDecimal balance = calculateBalance(groupId, member.getId(), other.getId());
+                memberNetBalance.put(member.getId(), memberNetBalance.get(member.getId()).add(balance));
             }
         }
-        
-        return balances;
     }
+    
+    // Step 2: Separate debtors and creditors
+    List<MemberBalance> debtors = new ArrayList<>();
+    List<MemberBalance> creditors = new ArrayList<>();
+    
+    for (Member member : members) {
+        BigDecimal netBalance = memberNetBalance.get(member.getId());
+        if (netBalance.compareTo(BigDecimal.ZERO) > 0) {
+            debtors.add(new MemberBalance(member.getId(), member.getName(), netBalance));
+        } else if (netBalance.compareTo(BigDecimal.ZERO) < 0) {
+            creditors.add(new MemberBalance(member.getId(), member.getName(), netBalance.abs()));
+        }
+    }
+    
+    // Step 3: Match debtors with creditors (greedy algorithm)
+    List<BalanceDTO> optimizedBalances = new ArrayList<>();
+    
+    for (MemberBalance debtor : debtors) {
+        BigDecimal remainingDebt = debtor.balance;
+        
+        for (MemberBalance creditor : creditors) {
+            if (remainingDebt.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+            
+            if (creditor.balance.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal paymentAmount = remainingDebt.min(creditor.balance);
+                
+                BalanceDTO dto = new BalanceDTO();
+                dto.setDebtorId(debtor.memberId);
+                dto.setDebtorName(debtor.memberName);
+                dto.setCreditorId(creditor.memberId);
+                dto.setCreditorName(creditor.memberName);
+                dto.setAmount(paymentAmount);
+                
+                optimizedBalances.add(dto);
+                
+                remainingDebt = remainingDebt.subtract(paymentAmount);
+                creditor.balance = creditor.balance.subtract(paymentAmount);
+            }
+        }
+    }
+    
+    return optimizedBalances;
+}
+
 
     public BigDecimal getBalance(Long groupId, Long memberId1, Long memberId2) {
         return calculateBalance(groupId, memberId1, memberId2);
@@ -109,5 +136,18 @@ public class SettlementService {
         }
         
         return total;
+    }
+
+    // Helper class for settlement calculation (only used in memory)
+    private static class MemberBalance {
+        Long memberId;
+        String memberName;
+        BigDecimal balance;
+        
+        MemberBalance(Long memberId, String memberName, BigDecimal balance) {
+            this.memberId = memberId;
+            this.memberName = memberName;
+            this.balance = balance;
+        }
     }
 }
