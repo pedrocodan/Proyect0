@@ -11,8 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,24 +32,6 @@ public class ExpenseService {
         
         if (!paidBy.getGroupId().equals(groupId)) {
             throw new ResourceNotFoundException("Member does not belong to this group");
-        }
-        
-        // Default to equal split if no divisions provided
-        if (request.getDivisions() == null || request.getDivisions().isEmpty()) {
-            List<Member> members = memberRepository.findByGroupId(groupId);
-            if (members.isEmpty()) {
-                throw new IllegalArgumentException("Group has no members");
-            }
-            List<ExpenseDivisionDTO> divisions = new ArrayList<>();
-            BigDecimal remaining = request.getAmount();
-            int size = members.size();
-            for (int i = 0; i < size - 1; i++) {
-                BigDecimal share = request.getAmount().divide(BigDecimal.valueOf(size), 2, RoundingMode.DOWN);
-                divisions.add(new ExpenseDivisionDTO(members.get(i).getId(), share));
-                remaining = remaining.subtract(share);
-            }
-            divisions.add(new ExpenseDivisionDTO(members.get(size - 1).getId(), remaining));
-            request.setDivisions(divisions);
         }
         
         // Validate that divisions sum equals amount
